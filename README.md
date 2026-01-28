@@ -98,6 +98,8 @@ This project utilizes Power Query M language for ETL (Extract, Transform, Load) 
 
 ### Example M Queries:
 
+**Note:** The following examples use placeholder file paths. Replace with your actual data source paths from the Google Drive download.
+
 ```m
 // Example: Clean and transform job postings data
 let
@@ -129,10 +131,9 @@ Total Jobs = COUNTROWS('job_postings_flat')
 #### 2. **Average Salary**
 ```dax
 Avg Salary = 
-DIVIDE(
-    SUM('job_postings_flat'[salary_min]) + SUM('job_postings_flat'[salary_max]),
-    COUNTROWS('job_postings_flat') * 2,
-    0
+AVERAGEX(
+    'job_postings_flat',
+    DIVIDE([salary_min] + [salary_max], 2, 0)
 )
 ```
 
@@ -140,8 +141,8 @@ DIVIDE(
 ```dax
 Conversion Rate = 
 DIVIDE(
-    CALCULATE(COUNT('Table'[Applicants]), 'Table'[Stage] = "Hired"),
-    CALCULATE(COUNT('Table'[Applicants]), 'Table'[Stage] = "Applied"),
+    CALCULATE(SUM('Table'[Applicants]), 'Table'[Stage] = "Hired"),
+    CALCULATE(SUM('Table'[Applicants]), 'Table'[Stage] = "Applied"),
     0
 )
 ```
@@ -149,10 +150,12 @@ DIVIDE(
 #### 4. **YoY Growth**
 ```dax
 YoY Growth % = 
-VAR CurrentYear = CALCULATE([Total Jobs], YEAR('job_postings_flat'[posting_date]) = YEAR(TODAY()))
-VAR PreviousYear = CALCULATE([Total Jobs], YEAR('job_postings_flat'[posting_date]) = YEAR(TODAY()) - 1)
+VAR CurrentYear = 
+    CALCULATE([Total Jobs], YEAR('job_postings_flat'[posting_date]) = YEAR(TODAY()))
+VAR PreviousYear = 
+    CALCULATE([Total Jobs], YEAR('job_postings_flat'[posting_date]) = YEAR(TODAY()) - 1)
 RETURN
-DIVIDE(CurrentYear - PreviousYear, PreviousYear, 0)
+    DIVIDE(CurrentYear - PreviousYear, PreviousYear, 0)
 ```
 
 #### 5. **Time Intelligence - Running Total**
@@ -181,15 +184,15 @@ SUMX(
 ```dax
 // Example: Salary Range Category (Calculated Column)
 Salary Range = 
-VAR AvgSalary = DIVIDE('job_postings_flat'[salary_min] + 'job_postings_flat'[salary_max], 2, 0)
+VAR AvgSalary = DIVIDE([salary_min] + [salary_max], 2, 0)
 RETURN
-SWITCH(
-    TRUE(),
-    AvgSalary < 50000, "Entry Level",
-    AvgSalary < 100000, "Mid Level",
-    AvgSalary < 150000, "Senior Level",
-    "Executive Level"
-)
+    SWITCH(
+        TRUE(),
+        AvgSalary < 50000, "Entry Level",
+        AvgSalary < 100000, "Mid Level",
+        AvgSalary < 150000, "Senior Level",
+        "Executive Level"
+    )
 ```
 
 ## 🔗 Relationships and Data Model
@@ -332,9 +335,9 @@ Provided for demonstration and educational purposes. See `LICENSE` for details.
 
 数据模型包含以下表：
 
-1. **job_postings_flat** - 职位发布详细信息
-2. **waterfalldate** - 薪酬组成分析
-3. **Table** - 应聘者流程阶段
+1. **job_postings_flat** - 职位发布详细信息（包含职位名称、地点、薪资范围等）
+2. **waterfalldate** - 薪酬组成分析表（包含基本工资、奖金、福利等组成部分及金额）
+3. **Table** - 应聘者流程阶段表（包含招聘漏斗各阶段和应聘者数量）
 
 ## 🔄 数据转换（M 语言）
 
