@@ -49,9 +49,10 @@ Detailed job posting information including:
 - Location and remote options
 - Source and posting date
 - Schedule type (full-time, part-time, etc.)
-- Salary ranges
+- Salary ranges (salary_min, salary_max, and calculated salary_avg)
 - Company information
 - Required skills
+- job_id (primary key)
 
 ### 2) `waterfalldate`
 Compensation analysis table with:
@@ -62,10 +63,11 @@ Compensation analysis table with:
 
 ### 3) `Table`
 Applicant pipeline stages table featuring:
-- Recruitment funnel stages
-- Applicant counts at each stage
+- Stage (recruitment funnel stage name: Applied, Screened, Interviewed, Hired, etc.)
+- Applicants (count of applicants at each stage)
 - Conversion metrics
 - Pipeline performance indicators
+- job_id (foreign key linking to job_postings_flat)
 
 ## 🔄 Data Transformation (M Language / Power Query)
 
@@ -127,7 +129,11 @@ Total Jobs = COUNTROWS('job_postings_flat')
 #### 2. **Average Salary**
 ```dax
 Avg Salary = 
-AVERAGE('job_postings_flat'[salary_avg])
+DIVIDE(
+    SUM('job_postings_flat'[salary_min]) + SUM('job_postings_flat'[salary_max]),
+    COUNTROWS('job_postings_flat') * 2,
+    0
+)
 ```
 
 #### 3. **Conversion Rate**
@@ -173,13 +179,15 @@ SUMX(
 ### Calculated Columns:
 
 ```dax
-// Example: Salary Range Category
+// Example: Salary Range Category (Calculated Column)
 Salary Range = 
+VAR AvgSalary = DIVIDE('job_postings_flat'[salary_min] + 'job_postings_flat'[salary_max], 2, 0)
+RETURN
 SWITCH(
     TRUE(),
-    'job_postings_flat'[salary_avg] < 50000, "Entry Level",
-    'job_postings_flat'[salary_avg] < 100000, "Mid Level",
-    'job_postings_flat'[salary_avg] < 150000, "Senior Level",
+    AvgSalary < 50000, "Entry Level",
+    AvgSalary < 100000, "Mid Level",
+    AvgSalary < 150000, "Senior Level",
     "Executive Level"
 )
 ```
@@ -188,9 +196,9 @@ SWITCH(
 
 The data model uses the following relationships:
 
-- **One-to-Many:** `job_postings_flat` → `Table` (via job_id or applicant tracking)
-- **One-to-Many:** Date dimension → fact tables (for time intelligence)
-- **Star Schema:** Fact tables connected to dimension tables for optimal performance
+- **One-to-Many:** `job_postings_flat` (job_id) → `Table` (job_id) - Links job postings to applicant pipeline data
+- **Star Schema:** Central fact tables connected to dimension tables for optimal query performance
+- **Date Table:** Implicit date hierarchy on posting_date field enables time intelligence functions (recommended: create explicit Date dimension table for advanced time intelligence)
 
 ## 🎯 Key Features
 
